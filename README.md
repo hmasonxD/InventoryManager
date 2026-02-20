@@ -16,16 +16,18 @@ A full-stack inventory management system I built to practice enterprise-level AS
 - **Categories & Suppliers** — organize products and track vendors
 - **Role-based auth** — Admins get full access, Viewers can only browse and place orders
 - **Low stock alerts** — flags products when inventory drops below a configurable threshold
+- **Unit tests** — xUnit tests covering models, business logic, and controller behavior
 
 ## Tech Stack
 
 | Layer          | Technology                  |
 | -------------- | --------------------------- |
-| Framework      | ASP.NET MVC (.NET 9)        |
+| Framework      | ASP.NET MVC (.NET 10)       |
 | ORM            | Entity Framework Core       |
 | Database       | SQL Server (LocalDB)        |
 | Authentication | ASP.NET Identity with Roles |
 | Frontend       | Bootstrap 5, Chart.js       |
+| Testing        | xUnit, EF Core InMemory     |
 | Architecture   | MVC Pattern                 |
 
 ## Database Schema
@@ -41,7 +43,7 @@ Category (1) ──── (*) Product (*) ──── (1) Supplier
 
 ### Prerequisites
 
-- [.NET 9 SDK](https://dotnet.microsoft.com/download)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - SQL Server LocalDB (comes with Visual Studio)
 
 ### Setup
@@ -50,15 +52,18 @@ Category (1) ──── (*) Product (*) ──── (1) Supplier
 git clone https://github.com/hmasonxD/InventoryManager.git
 cd InventoryManager
 
-# configure admin credentials
-dotnet user-secrets set "AdminSettings:Email" "admin@inventory.com"
-dotnet user-secrets set "AdminSettings:Password" "Admin123!"
+# configure admin credentials (stored securely, never in source code)
+dotnet user-secrets --project InventoryManager/InventoryManager.csproj set "AdminSettings:Email" "admin@inventory.com"
+dotnet user-secrets --project InventoryManager/InventoryManager.csproj set "AdminSettings:Password" "Admin123!"
 
 # set up the database
-dotnet ef database update
+dotnet ef database update --project InventoryManager/InventoryManager.csproj
 
 # run it
-dotnet run
+dotnet run --project InventoryManager/InventoryManager.csproj
+
+# run tests
+dotnet test
 ```
 
 Then open `http://localhost:5097`
@@ -85,14 +90,40 @@ Then open `http://localhost:5097`
 ## Project Structure
 
 ```
-InventoryManager/
-├── Constants/       # role name constants
-├── Controllers/     # request handling + authorization
-├── Data/            # DbContext, migrations, seed data
-├── Models/          # entities + ViewModels
-├── Views/           # Razor templates per controller
-├── wwwroot/         # CSS, JS, static files
-└── Program.cs       # startup + middleware config
+InventoryManager/                        ← solution root
+├── InventoryManager.slnx                ← solution file
+├── InventoryManager/                    ← main web app
+│   ├── Constants/                       # role name constants
+│   ├── Controllers/                     # request handling + authorization
+│   ├── Data/                            # DbContext, migrations, seed data
+│   ├── Models/                          # entities + ViewModels
+│   ├── Views/                           # Razor templates per controller
+│   ├── wwwroot/                         # CSS, JS, static files
+│   └── Program.cs                       # startup + middleware config
+└── InventoryManager.Tests/              ← unit tests
+    ├── ProductTests.cs                  # product model + low stock logic
+    ├── OrderTests.cs                    # order totals + defaults
+    └── DashboardControllerTests.cs      # controller tests with in-memory DB
+```
+
+## Testing
+
+Built with xUnit following the **Arrange / Act / Assert** pattern. Tests cover:
+
+- **Product model** — low stock threshold detection across multiple scenarios using `[Theory]` parameterized tests
+- **Order model** — subtotal calculations, total summing, default values
+- **Dashboard controller** — inventory value calculation, low stock counting, and empty state handling using an EF Core in-memory database
+
+Run all tests:
+
+```bash
+dotnet test
+```
+
+Run a specific test class:
+
+```bash
+dotnet test --filter "FullyQualifiedName~ProductTests"
 ```
 
 ## What I Learned Building This
@@ -102,3 +133,6 @@ InventoryManager/
 - ASP.NET Identity — setting up roles, protecting routes with `[Authorize]`, seeding users on startup
 - Dependency injection — why controllers ask for services instead of creating them
 - Keeping secrets out of source code with `dotnet user-secrets`
+- Structuring a .NET solution with separate test projects that mirror the main app
+- Writing unit tests that use in-memory databases to avoid needing a real SQL Server
+- Stock management logic — deducting inventory on orders, restoring on cancellation, locking prices at order time
