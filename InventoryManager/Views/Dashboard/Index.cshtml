@@ -1,0 +1,213 @@
+@model InventoryManager.Models.DashboardViewModel
+
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<h2 class="mb-4">Dashboard</h2>
+
+<!-- Stat Cards Row -->
+<div class="row mb-4">
+    <div class="col-md-4 col-lg-2 mb-3">
+        <div class="card text-white bg-primary h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title">Products</h6>
+                <h2>@Model.TotalProducts</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+        <div class="card text-white bg-success h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title">Categories</h6>
+                <h2>@Model.TotalCategories</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+        <div class="card text-white bg-info h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title">Suppliers</h6>
+                <h2>@Model.TotalSuppliers</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+        <div class="card text-white bg-secondary h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title">Orders</h6>
+                <h2>@Model.TotalOrders</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+        <div class="card text-white bg-danger h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title">Low Stock</h6>
+                <h2>@Model.LowStockCount</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-lg-2 mb-3">
+        <div class="card text-white bg-dark h-100">
+            <div class="card-body text-center">
+                <h6 class="card-title">Inventory Value</h6>
+                <h4>@Model.TotalInventoryValue.ToString("C")</h4>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Products by Category</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Inventory Value by Category</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="valueChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Low Stock Alerts & Recent Orders Row -->
+<div class="row">
+    <div class="col-md-6 mb-3">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Low Stock Alerts</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.LowStockProducts.Any())
+                {
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Quantity</th>
+                                <th>Threshold</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var product in Model.LowStockProducts)
+                            {
+                                <tr>
+                                    <td>@product.Name</td>
+                                    <td>@product.Category?.Name</td>
+                                    <td><span class="badge bg-danger">@product.Quantity</span></td>
+                                    <td>@product.LowStockThreshold</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-success mb-0">All products are well stocked!</p>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Orders</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.RecentOrders.Any())
+                {
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Items</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var order in Model.RecentOrders)
+                            {
+                                <tr>
+                                    <td>@order.Id</td>
+                                    <td>@order.OrderDate.ToString("MMM dd, yyyy")</td>
+                                    <td>
+                                        <span class="badge bg-@(order.Status == OrderStatus.Delivered ? "success" :
+                                                                                                                                                                                                                                order.Status == OrderStatus.Cancelled ? "danger" :
+                                                                                                                                                                                                                                order.Status == OrderStatus.Shipped ? "info" : "warning")">
+                                            @order.Status
+                                        </span>
+                                    </td>
+                                    <td>@order.OrderItems.Count</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">No orders yet.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js Scripts -->
+<script>
+    // Data from our C# ViewModel, converted to JavaScript arrays
+    var categoryNames = [@Html.Raw(string.Join(",", Model.Categories.Select(c => $"'{c.Name}'")))];
+    var productCounts = [@Html.Raw(string.Join(",", Model.Categories.Select(c => c.Products.Count)))];
+    var categoryValues = [@Html.Raw(string.Join(",", Model.Categories.Select(c => c.Products.Sum(p => p.Price * p.Quantity))))];
+
+    // Color palette for charts
+    var colors = ['#0d6efd', '#198754', '#0dcaf0', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#20c997'];
+
+    // Bar chart — products per category
+    new Chart(document.getElementById('categoryChart'), {
+    type: 'bar',
+    data: {
+    labels: categoryNames,
+    datasets: [{
+    label: 'Number of Products',
+    data: productCounts,
+    backgroundColor: colors.slice(0, categoryNames.length)
+    }]
+    },
+    options: {
+    responsive: true,
+    plugins: { legend: { display: false } }
+    }
+    });
+
+    // Doughnut chart — inventory value per category
+    new Chart(document.getElementById('valueChart'), {
+    type: 'doughnut',
+    data: {
+    labels: categoryNames,
+    datasets: [{
+    data: categoryValues,
+    backgroundColor: colors.slice(0, categoryNames.length)
+    }]
+    },
+    options: {
+    responsive: true
+    }
+    });
+</script>

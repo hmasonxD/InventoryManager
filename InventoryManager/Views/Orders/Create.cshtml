@@ -1,0 +1,111 @@
+@model InventoryManager.Models.CreateOrderViewModel
+
+@{
+    ViewData["Title"] = "New Order";
+}
+
+<h2 class="mb-4">Place New Order</h2>
+
+<form asp-action="Create">
+    <div asp-validation-summary="All" class="alert alert-danger"
+         style="display:@(ViewData.ModelState.ErrorCount > 0 ? "block" : "none")"></div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Select Products</h5>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">Select</th>
+                        <th>Product</th>
+                        <th>Price</th>
+                        <th>In Stock</th>
+                        <th style="width: 120px;">Quantity</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.Items.Count; i++)
+                    {
+                        <tr>
+                            <td>
+                                <input type="hidden" name="Items[@i].ProductId" value="@Model.Items[i].ProductId" />
+                                <input type="hidden" name="Items[@i].ProductName" value="@Model.Items[i].ProductName" />
+                                <input type="hidden" name="Items[@i].Price" value="@Model.Items[i].Price" />
+                                <input type="hidden" name="Items[@i].AvailableStock"
+                                       value="@Model.Items[i].AvailableStock" />
+                                <input type="checkbox" name="Items[@i].IsSelected" value="true"
+                                       class="form-check-input item-checkbox" data-row="@i" />
+                            </td>
+                            <td><strong>@Model.Items[i].ProductName</strong></td>
+                            <td>@Model.Items[i].Price.ToString("C")</td>
+                            <td>
+                                <span class="badge bg-@(Model.Items[i].AvailableStock <= 10 ? "warning" : "success")">
+                                    @Model.Items[i].AvailableStock
+                                </span>
+                            </td>
+                            <td>
+                                <input type="number" name="Items[@i].Quantity" value="0" min="0"
+                                       max="@Model.Items[i].AvailableStock" class="form-control form-control-sm qty-input"
+                                       data-row="@i" data-price="@Model.Items[i].Price" />
+                            </td>
+                            <td class="subtotal" id="subtotal-@i">$0.00</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="table-light">
+                        <td colspan="5" class="text-end"><strong>Order Total:</strong></td>
+                        <td><strong id="orderTotal">$0.00</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="mb-3">
+                <label asp-for="Notes" class="form-label">Order Notes</label>
+                <textarea asp-for="Notes" class="form-control" rows="2" placeholder="Optional notes..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">Place Order</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+                // Calculate subtotals and total in real time
+                document.querySelectorAll('.qty-input').forEach(input => {
+                    input.addEventListener('input', updateTotals);
+                });
+
+                document.querySelectorAll('.item-checkbox').forEach(cb => {
+                    cb.addEventListener('change', updateTotals);
+                });
+
+                function updateTotals() {
+                    let total = 0;
+
+                    document.querySelectorAll('.qty-input').forEach(input => {
+                        const row = input.dataset.row;
+                        const price = parseFloat(input.dataset.price);
+                        const qty = parseInt(input.value) || 0;
+                        const checkbox = document.querySelector(`.item-checkbox[data-row="${row}"]`);
+                        const subtotal = checkbox.checked ? price * qty : 0;
+
+                        document.getElementById(`subtotal-${row}`).textContent = `$${subtotal.toFixed(2)}`;
+                        total += subtotal;
+                    });
+
+                    document.getElementById('orderTotal').textContent = `$${total.toFixed(2)}`;
+                }
+    </script>
+}
